@@ -19,6 +19,7 @@ func simulateDeviceData() {
 	//Add item
 	model.Devices = append(model.Devices, model.DeviceList{DeviceId: uuid.New().String(),
 		DeviceName: "device01",
+		DeviceIp:   "127.0.0.1",
 		Applications: []model.ApplicationInfo{{ApplicationId: uuid.New().String(),
 			ApplicationName: "app-01"}},
 		AvailableMemory: "0",
@@ -29,6 +30,7 @@ func simulateDeviceData() {
 	//Add item
 	model.Devices = append(model.Devices, model.DeviceList{DeviceId: uuid.New().String(),
 		DeviceName: "device02",
+		DeviceIp:   "127.0.0.1",
 		Applications: []model.ApplicationInfo{{ApplicationId: uuid.New().String(),
 			ApplicationName: "app-01"}},
 		AvailableMemory: "0",

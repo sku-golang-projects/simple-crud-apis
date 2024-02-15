@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 
 	model "SIMPLE_CRUD_APIS/src/model"
+	util "SIMPLE_CRUD_APIS/src/util"
 )
 
 func GetAllDevices(w http.ResponseWriter, r *http.Request) {
@@ -35,9 +36,8 @@ func GetDevice(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 
-	if len(params["id"]) < 36 {
-		w.WriteHeader(http.StatusPreconditionFailed)
-		w.Write([]byte("Invalid input provided, does not seems to be valid ID."))
+	shouldReturn := validateUUID(params["id"], w)
+	if shouldReturn {
 		return
 	}
 
@@ -79,14 +79,15 @@ func AddDevice(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Invalid input provided, please provide the valid data."))
 		return
 	}
-	fmt.Println("Decoded data is:", device.DeviceName)
+	fmt.Printf("Decoded data is, DeviceName:%s and DeviceIp:%s", device.DeviceName, device.DeviceIp)
 
 	deviceData := model.DeviceList{DeviceId: uuid.New().String(),
 		DeviceName:      device.DeviceName,
+		DeviceIp:        device.DeviceIp,
 		Applications:    []model.ApplicationInfo{{}},
 		AvailableMemory: "0",
 		TotalMemory:     "0",
-		Status:          "Onboarding",
+		Status:          util.CreateInitialDeviceState(device.DeviceIp),
 	}
 
 	model.Devices = append(model.Devices, deviceData)
@@ -94,6 +95,42 @@ func AddDevice(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateDevice(w http.ResponseWriter, r *http.Request) {
+
+	params := mux.Vars(r)
+	data := r.Body
+
+	//Validate id
+	shouldReturn := validateUUID(params["id"], w)
+	if shouldReturn {
+		return
+	}
+
+	var deviceReg model.DeviceRegistration
+	err := json.NewDecoder(data).Decode(&deviceReg)
+	if err != nil {
+		w.WriteHeader(http.StatusPreconditionFailed)
+		w.Write([]byte("Invalid input provided, please provide the valid data."))
+		return
+	}
+
+	fmt.Printf("Decoded data is, DeviceName:%s and DeviceIp:%s", deviceReg.DeviceName, deviceReg.DeviceIp)
+
+	found := false
+	for index, item := range model.Devices {
+		if item.DeviceId == params["id"] {
+			model.Devices[index].DeviceIp = deviceReg.DeviceIp
+			model.Devices[index].DeviceName = deviceReg.DeviceName
+			found = true
+
+			w.Write([]byte("{\"Response\":\"Requested device is updated successfully.\"}"))
+			return
+		}
+	}
+
+	if !found {
+		w.WriteHeader(http.StatusNoContent)
+		w.Write([]byte("No matching data found."))
+	}
 
 }
 
@@ -103,9 +140,8 @@ func DeleteDevice(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Request to delete ID:", params["id"])
 
-	if len(params["id"]) < 36 {
-		w.WriteHeader(http.StatusPreconditionFailed)
-		w.Write([]byte("Invalid input provided, does't seems to be valid ID."))
+	shouldReturn := validateUUID(params["id"], w)
+	if shouldReturn {
 		return
 	}
 
@@ -155,4 +191,13 @@ func DeleteAndListRemainingDevice(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		w.Write([]byte("{\"Response\":\"Unable to found the requested device id.\"}"))
 	}
+}
+
+func validateUUID(id string, w http.ResponseWriter) bool {
+	if len(id) < 36 {
+		w.WriteHeader(http.StatusPreconditionFailed)
+		w.Write([]byte("Invalid input provided, does not seems to be valid ID."))
+		return true
+	}
+	return false
 }
